@@ -33,6 +33,23 @@ function (third_party)
 	else()
 		message(STATUS "bcm2835 not found")
 	endif()
+
+	# Load bluetooth
+	find_package(bluetooth REQUIRED)
+	set(bluetooth_FOUND ${bluetooth_FOUND} CACHE INTERNAL "bluetooth: Library found" FORCE)		
+	if(bluetooth_FOUND)
+		set(PKG_LIBRARIES ${bluetooth_LIBRARIES} ${bluetooth_LIBRARY} ${bluetooth_LIBS})
+		set(PKG_INCLUDES ${bluetooth_INCLUDE_DIRS} ${bluetooth_INCLUDE_DIR})
+
+		set(bluetooth_LIBRARIES  ${PKG_LIBRARIES}
+			CACHE INTERNAL "bluetooth: Project Library" FORCE)
+		set(bluetooth_INCLUDE_DIRS ${PKG_INCLUDES}
+			CACHE INTERNAL "bluetooth: Include Directories" FORCE)
+		message(STATUS "bluetooth found")
+	else()
+		message(STATUS "bluetooth not found")
+	endif()
+
 	
 	# Load Threads
 	find_package(Threads REQUIRED)

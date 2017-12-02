@@ -14,6 +14,11 @@ endif()
 message("-- Generating build for Lepton Server. Host: ${CMAKE_SYSTEM_NAME}")
 add_subdirectory(LePiServer)
 
+
+message("-- Generating build for Player Custom. Host: ${CMAKE_SYSTEM_NAME}")
+add_subdirectory(PlayerCustom)
+
+
 if(OpenCV_FOUND)
     # TCP/IP Client for thermal stream using socket communication
     # with an existing Server app

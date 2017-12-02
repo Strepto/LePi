@@ -32,6 +32,7 @@
 // Third party
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 // C/C++
 #include <iostream>
@@ -49,7 +50,9 @@ int main()
     
     // Define frame
     std::vector<uint8_t> frame(cam.width() * cam.height());
+    cv::Size size(160*4,120*4);
     cv::Mat img(cam.height(), cam.width(), CV_8UC1, frame.data());
+    cv::Mat larger;
     
     // Stream frames
     int frame_nb{0};
@@ -59,11 +62,11 @@ int main()
         // Frame request
         if (cam.hasFrame()) {
             cam.getFrameU8(frame);
+			cv::flip(img, larger, -1);
             ++frame_nb;
         }
-        
-        // Display
-        cv::imshow("Lepton", img);
+        // Display    
+        cv::imshow("Lepton", larger);
         int key = cv::waitKey(10);
         if (key == 27) { // Press Esc to exit
             break;
