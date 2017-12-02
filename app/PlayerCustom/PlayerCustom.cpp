@@ -39,21 +39,28 @@
 #include <unistd.h>
 #include <chrono>
 
-
+#include "sdpregister.h"
+#include "rfcommserver.h"
 
 /**
  * @brief Sample app for grabbing IR frames using LePi serial interface
  */
 int main()
 {
-    // Init sensor
+	
+    std::cout << "Creating RFComm Server" << std::endl;
+    RfcommServer server;
+    std::cout << "Starting RFComm server" << std::endl;
+    int i = server.btServer();
+    std::cout << "Rfcomm server returned " << i << std::endl;
+	
+	std::cout << "Starting Lepton Sensor" << std::endl;
+	//Init sensor
     LePi lePi;
     if (!lePi.OpenConnection()) {
-        std::cerr << "Unable to open communication with the sensor" << std::endl;
-        exit (EXIT_FAILURE);
+      std::cerr << "Unable to open communication with the sensor" << std::endl;
+       exit (EXIT_FAILURE);
     }
-    
-
     // Frame buffer
     LeptonType lp_type = lePi.GetType();
     LeptonCameraConfig lp_config(lp_type);
