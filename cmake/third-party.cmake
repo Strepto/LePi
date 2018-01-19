@@ -2,6 +2,22 @@
 # Load 3rd party libraries
 function (third_party)
 
+	# Load protobuf
+	find_package(protobuf)
+	set(protobuf_FOUND ${protobuf_FOUND} CACHE INTERNAL "protobuf: Library found" FORCE)		
+	if(protobuf_FOUND)
+		set(PKG_LIBRARIES ${protobuf_LIBRARIES} ${protobuf_LIBRARY} ${protobuf_LIBS})
+		set(PKG_INCLUDES ${protobuf_INCLUDE_DIRS} ${protobuf_INCLUDE_DIR})
+
+		set(protobuf_LIBRARIES  ${PKG_LIBRARIES}
+			CACHE INTERNAL "protobuf: Project Library" FORCE)
+		set(protobuf_INCLUDE_DIRS ${PKG_INCLUDES}
+			CACHE INTERNAL "protobuf: Include Directories" FORCE)
+		message(STATUS "protobuf found")
+	else()
+		message(STATUS "protobuf not found")
+	endif()
+
 	# Load OpenCV
 	find_package(OpenCV)
 	set(OpenCV_FOUND ${OpenCV_FOUND} CACHE INTERNAL "OpenCV: Library found" FORCE)		

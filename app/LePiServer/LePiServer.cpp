@@ -25,25 +25,34 @@
  * SOFTWARE.
  */
 
+// Nils Model
+#include "Messages.pb.h"
+#include "Messages.pb.cc"
+
 // LePi
-#include <Connection.h>
-#include <ConnectionCommon.h>
+#include "ConnectionCustom.h"
+//~ #include <ConnectionCommon.h>
 #include <LeptonCommon.h>
 #include <LeptonCamera.h>
 
 // C/C++
 #include <stdio.h>
-#include <sys/socket.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <iostream>
 #include <unistd.h>
 #include <stdlib.h>
 
+
+using namespace google::protobuf::io;
 
 /**
  * Sample Server app for streaming video over the local network (TCP)
  */
 int main() {
-    
+    while(true){
+		
     // Create socket
     const int kPortNumber{5995};
     const std::string kIPAddress{""}; // If empty, local IP address is used
@@ -60,44 +69,82 @@ int main() {
     // Intermediary buffers
     std::vector<uint8_t> imgU8(lePi.width() * lePi.height());
     std::vector<uint16_t> imgU16(lePi.width() * lePi.height());
+	uint frames_sent = 0;
+	uint identical_frames_sent_total = 0;
+	auto start_time = std::chrono::system_clock::now();
 
     bool force_exit{false};
     while (!force_exit) {
     
         //  Receive Request
         RequestMessage req_msg;
-        ReceiveMessage(socket_connection, req_msg);
+        req_msg.set_request_cmd(CMD_FRAME_U8);
+        req_msg.set_request_type(REQUEST_FRAME);
+        //~ ReceiveMessage(socket_connection, req_msg, 1337);
+        uint32_t expectedSize = 1;
+        uint8_t req_int;
+		size_t data_size{0};
+		do
+		{ // wait for data to be available
+			
+			if(ioctl(socket_connection, FIONREAD, &data_size) < 0){
+				std::cerr << "Error: " << strerror(errno) << std::endl;
+				force_exit = true;
+				break;
+			}
+
+		} while (data_size < expectedSize);
+		auto rc = recv(socket_connection, &req_int, expectedSize, 0);
+
+		// Check if connection is still open
+		if (rc == -1) {
+			std::cerr << "Error: " << strerror(errno) << std::endl;
+			force_exit = true;			
+			break;
+//throw std::runtime_error("Connection lost.");
+		}
+
+		if(req_int == 1){
+			std::cout << "Received byte with 1 Sending Data" << std::endl;
+		}else{
+			std::cout << "Received incorrect byte, waiting for new byte." << std::endl;
+			continue;
+		}
 
         // Frame request msg
         ResponseMessage resp_msg;
-        switch (req_msg.req_type) {
+        switch (req_msg.request_type()) {
 
             case REQUEST_FRAME: {
-                resp_msg.req_type = REQUEST_FRAME;
-                resp_msg.sensor_temperature = lePi.SensorTemperature();
-                if (req_msg.req_cmd == CMD_FRAME_U8) {
-                    lePi.getFrameU8(imgU8);
-                    memcpy(resp_msg.frame, imgU8.data(), imgU8.size());
-                    resp_msg.bpp = 1;
+                resp_msg.set_request_type(REQUEST_FRAME);
+                resp_msg.set_sensor_temperature(lePi.SensorTemperature());
+                if (req_msg.request_cmd() == CMD_FRAME_U8) {
+					if (lePi.hasFrame()) {
+						lePi.getFrameU8(imgU8);
+						++identical_frames_sent_total;
+					}
+                    //~ resp_msg.set_frame(imgU8.data(), imgU8.size());
+                    //~ resp_msg.set_bpp(1);
                 } else {
                     lePi.getFrameU16(imgU16);
-                    memcpy(resp_msg.frame, imgU16.data(), imgU16.size() * 2);
-                    resp_msg.bpp = 2;
+                    resp_msg.set_frame(imgU16.data(), imgU16.size() *2);
+                    resp_msg.set_bpp(2);
                 }
-                resp_msg.req_status = STATUS_FRAME_READY;
-                resp_msg.height = lePi.height();
-                resp_msg.width = lePi.width();
+                resp_msg.set_request_status(STATUS_FRAME_READY);
+                resp_msg.set_height(lePi.height());
+                resp_msg.set_width(lePi.width());
                 break;
             }
             case REQUEST_I2C: {
-                resp_msg.req_type = REQUEST_I2C;
-                if (lePi.sendCommand(static_cast<LeptonI2CCmd>(req_msg.req_cmd),
-                                     resp_msg.frame)) {
-                    resp_msg.req_status = STATUS_I2C_SUCCEED;
-                }
-                else {
-                    resp_msg.req_status = STATUS_I2C_FAILED;
-                }
+				// Disabled for now.
+                //~ resp_msg.set_request_type(REQUEST_I2C);
+                //~ if (lePi.sendCommand(static_cast<LeptonI2CCmd>(req_msg.request_cmd()),
+                                     //~ resp_msg.frame()) {
+                    //~ resp_msg.set_request_status(STATUS_I2C_SUCCEDED);
+                //~ }
+                //~ else {
+                    //~ resp_msg.set_request_status(STATUS_I2C_FAILED);
+                //~ }
                 break;
             }
             case REQUEST_EXIT: {
@@ -105,14 +152,42 @@ int main() {
                 break;
             }
             default : {
-                resp_msg.req_type = REQUEST_UNKNOWN;
-                resp_msg.req_status = STATUS_RESEND;
+                resp_msg.set_request_type(REQUEST_UNKNOWN);
+                resp_msg.set_request_status(STATUS_RESEND);
                 break;
             }
         }
+		//~ std::cout<< "Size after serializing is :" << (resp_msg.ByteSize()) << std::endl;
+
+		//~ uint32_t siz = resp_msg.ByteSize();
+		//~ char *pkt = new char [siz];
+		//~ std::string data;
+		//~ google::protobuf::io::ArrayOutputStream aos = aos(pkt, siz);
+		//~ google::protobuf::io::CodedOutputStream *coded_output = new google::protobuf::io::CodedOutputStream(&aos);
+		//~ coded_output->WriteVarint32(resp_msg.ByteSize());
+		//~ resp_msg.SerializeToString(&data);
+		std::cout<< imgU8.size() << std::endl;
 
         // Send response
-        SendMessage(socket_connection, resp_msg);
+        auto sd = send(socket_connection, imgU8.data(), imgU8.size(), 0);
+		if (sd == -1) {
+			std::cerr << "Error: " << strerror(errno) << std::endl;
+			throw std::runtime_error("Connection lost.");
+		}
+		++frames_sent;
+		// Runtime
+        auto end_time = std::chrono::system_clock::now();
+        auto elapsed = std::chrono::duration_cast <std::chrono::seconds>(end_time - start_time);
+        if (elapsed.count() > 1.0) {
+            double fps = static_cast<double>(frames_sent) / static_cast<double>(elapsed.count());
+            std::cout << "FPS: " << fps << std::endl;            
+            std::cout << "Idential Frames Sent total: " << identical_frames_sent_total << std::endl;
+
+            start_time = end_time;
+            frames_sent = 0;
+        }
+		//~ std::cout<< "Data sent" << data.length() << std::endl;
+        //~ SendMessage(socket_connection, resp_msg);
    }
 
     // Release sensors
@@ -120,7 +195,7 @@ int main() {
 
     // Close connection
     close(socket_connection);
-
+}
     return EXIT_SUCCESS;
 
 }

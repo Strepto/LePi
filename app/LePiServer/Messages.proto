@@ -1,0 +1,46 @@
+﻿syntax = "proto3";
+
+enum RequestType
+{
+    REQUEST_FRAME = 0;
+    REQUEST_I2C = 1;
+    REQUEST_EXIT = 2;
+    REQUEST_UNKNOWN = 3;
+}
+
+enum RequestCmd
+{
+    CMD_FRAME_U8 = 0;
+    CMD_FRAME_U16 = 1;
+    CMD_I2C_FFC = 2;
+    CMD_I2C_SENSOR_TEMPERATURE =3; 
+    CMD_VOID = 4;
+}
+
+enum RequestStatus
+{
+    STATUS_FRAME_READY = 0;
+    STATUS_NO_FRAME = 1;
+    STATUS_I2C_SUCCEDED = 2;
+    STATUS_I2C_FAILED = 3;
+    STATUS_RESEND = 4;
+}
+
+
+message RequestMessage
+{
+    RequestType request_type = 1;
+    RequestCmd request_cmd = 2;
+}
+
+message ResponseMessage
+{
+    RequestType request_type = 1;
+    RequestStatus request_status = 2;
+    uint32 width = 3;
+    uint32 height = 4;
+    uint32 bpp = 5;
+    uint64 frame_id = 6;
+    bytes frame = 7;
+    double sensor_temperature = 8;
+}

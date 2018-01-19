@@ -6,4 +6,5 @@ class SdpRegisterer{
 	public:
 		SdpRegisterer();
 		sdp_session_t* register_service();
+		void cleanup();
 };

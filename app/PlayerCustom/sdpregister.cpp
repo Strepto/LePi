@@ -9,13 +9,26 @@ SdpRegisterer::SdpRegisterer(){
 	
 }
 
+static sdp_session_t *sdp_sess;
+
+
+static sdp_list_t *l2cap_list = 0, 
+				   *rfcomm_list = 0,
+				   *root_list = 0,
+				   *proto_list = 0, 
+				   *access_proto_list = 0,
+				   *svc_class_list = 0,
+				   *profile_list = 0;
+
+static sdp_data_t *channel;
+
 sdp_session_t* SdpRegisterer::register_service()
 {
 	const bdaddr_t bdaddr_local_cpy = {{0, 0, 0, 0xff, 0xff, 0xff}};
 	const bdaddr_t bdaddr_all_cpy = {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
 	const bdaddr_t bdaddr_any_cpy = {{0, 0, 0, 0, 0, 0}};
 	
-    uint8_t svc_uuid_int[] = { 0x11, 0x01, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0x80, 0xab, 
+    uint8_t svc_uuid_int[] = { 0x22, 0x22, 0x22, 0x01, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0x80, 0xab, 
         0xaa, 0xaa, 0xaa};
     uint8_t rfcomm_channel = 11;
     const char *service_name = "Nils Bluetooth Service";
@@ -24,20 +37,14 @@ sdp_session_t* SdpRegisterer::register_service()
 
     uuid_t root_uuid, l2cap_uuid, rfcomm_uuid, svc_uuid, 
            svc_class_uuid;
-    sdp_list_t *l2cap_list = 0, 
-               *rfcomm_list = 0,
-               *root_list = 0,
-               *proto_list = 0, 
-               *access_proto_list = 0,
-               *svc_class_list = 0,
-               *profile_list = 0;
-    sdp_data_t *channel = 0;
-    sdp_profile_desc_t profile;
-    sdp_record_t record = { 0 };
-    sdp_session_t *session = 0;
+    sdp_profile_desc_t profile_desc;
+    sdp_record_t record;
+    memset(&record, 0, sizeof(record));
+    record.handle = 0xFFFFFFFF;
 
     // set the general service ID
     sdp_uuid128_create( &svc_uuid, &svc_uuid_int );
+    
     sdp_set_service_id( &record, svc_uuid );
 
     // set the service class
@@ -46,9 +53,9 @@ sdp_session_t* SdpRegisterer::register_service()
     sdp_set_service_classes(&record, svc_class_list);
 
     // set the Bluetooth profile information
-    sdp_uuid16_create(&profile.uuid, SERIAL_PORT_PROFILE_ID);
-    profile.version = 0x0100;
-    profile_list = sdp_list_append(0, &profile);
+    sdp_uuid16_create(&profile_desc.uuid, SERIAL_PORT_PROFILE_ID);
+    profile_desc.version = 0x0100;
+    profile_list = sdp_list_append(0, &profile_desc);
     sdp_set_profile_descs(&record, profile_list);
 
     // make the service record publicly browsable
@@ -76,9 +83,13 @@ sdp_session_t* SdpRegisterer::register_service()
 
     // connect to the local SDP server, register the service record, 
     // and disconnect
-    session = sdp_connect(&bdaddr_any_cpy, &bdaddr_local_cpy, SDP_RETRY_IF_BUSY);
-    sdp_record_register(session, &record, 0);
+    sdp_sess = sdp_connect(&bdaddr_any_cpy, &bdaddr_local_cpy, SDP_RETRY_IF_BUSY);
+    sdp_record_register(sdp_sess, &record, 0);
 
+    return sdp_sess;
+}
+
+void SdpRegisterer::cleanup(){
     // cleanup
     sdp_data_free( channel );
     sdp_list_free( l2cap_list, 0 );
@@ -87,8 +98,8 @@ sdp_session_t* SdpRegisterer::register_service()
     sdp_list_free( access_proto_list, 0 );
     sdp_list_free( svc_class_list, 0 );
     sdp_list_free( profile_list, 0 );
-
-    return session;
+    
+    sdp_close(sdp_sess);
 }
 
 //int main()

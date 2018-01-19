@@ -51,7 +51,7 @@ int main()
     std::cout << "Creating RFComm Server" << std::endl;
     RfcommServer server;
     std::cout << "Starting RFComm server" << std::endl;
-    int i = server.btServer();
+    int i = server.sdpSearch();
     std::cout << "Rfcomm server returned " << i << std::endl;
 	
 	std::cout << "Starting Lepton Sensor" << std::endl;
